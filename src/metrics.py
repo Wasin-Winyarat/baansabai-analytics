@@ -56,6 +56,16 @@ def _between_dates(df: pd.DataFrame, start_date: str | None, end_date: str | Non
     return df[mask]
 
 
+def orders_in_month(df: pd.DataFrame, month: str) -> pd.DataFrame:
+    """คำสั่งซื้อทุกสถานะในเดือนที่ระบุ ('YYYY-MM')"""
+    return df[df["order_datetime"].str[:7] == month]
+
+
+def previous_month(month: str) -> str:
+    """เดือนก่อนหน้าของ 'YYYY-MM'"""
+    return str(pd.Period(month, freq="M") - 1)
+
+
 def net_sales(df: pd.DataFrame) -> float:
     """ยอดขายสุทธิรวม (บาท)"""
     return float(_net(df).sum())
@@ -109,6 +119,15 @@ def rating_by_ship_bucket(df: pd.DataFrame) -> dict[str, float]:
                      labels=["1-2", "3-4", "5-6", "7+"])
     means = rated["rating"].groupby(buckets, observed=False).mean()
     return {str(k): float(v) for k, v in means.items()}
+
+
+def top_products(df: pd.DataFrame, n: int = 5) -> pd.DataFrame:
+    """สินค้าขายดีตามยอดขายสุทธิ n อันดับแรก คอลัมน์ product_id, product_name, qty, net"""
+    ok = _delivered(df)
+    sales = ok[["product_id", "product_name", "qty"]].assign(net=_net(df))
+    top = (sales.groupby(["product_id", "product_name"], as_index=False)[["qty", "net"]].sum()
+           .sort_values("net", ascending=False).head(n))
+    return top.reset_index(drop=True)
 
 
 def top_province(df: pd.DataFrame, region: str) -> str:
